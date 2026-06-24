@@ -8,6 +8,7 @@ const message = document.getElementById("message");
 const startBtn = document.getElementById("startBtn");
 const rankingList = document.getElementById("rankingList");
 const resetRankingBtn = document.getElementById("resetRankingBtn");
+const bgm = document.getElementById("bgm");
 
 let playerX = 200;
 let playerWidth = 100;
@@ -64,6 +65,24 @@ function initAudio() {
   if (!audioContext) {
     audioContext = new AudioContext();
   }
+}
+
+function startBgm() {
+  if (!bgm) return;
+
+  bgm.volume = 0.25;
+  bgm.currentTime = 0;
+
+  bgm.play().catch(() => {
+    console.log("브라우저 정책으로 인해 BGM 재생이 차단될 수 있습니다.");
+  });
+}
+
+function stopBgm() {
+  if (!bgm) return;
+
+  bgm.pause();
+  bgm.currentTime = 0;
 }
 
 function playSound(frequency, duration, type = "sine", volume = 0.2) {
@@ -174,6 +193,7 @@ resetRankingBtn.addEventListener("click", () => {
 
 function startGame() {
   initAudio();
+  startBgm();
 
   level = 1;
   score = 0;
@@ -436,6 +456,8 @@ function endGame(text, result) {
 
   clearInterval(gameLoop);
   clearInterval(spawnLoop);
+
+  stopBgm();
 
   moveLeft = false;
   moveRight = false;
