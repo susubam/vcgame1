@@ -63,6 +63,30 @@ function playMoveSound() {
   playSound(220, 0.04, "square", 0.05);
 }
 
+function playWinSound() {
+  playSound(523, 0.12, "sine", 0.25);
+
+  setTimeout(() => {
+    playSound(659, 0.12, "sine", 0.25);
+  }, 120);
+
+  setTimeout(() => {
+    playSound(784, 0.18, "sine", 0.3);
+  }, 240);
+}
+
+function playLoseSound() {
+  playSound(392, 0.18, "sawtooth", 0.2);
+
+  setTimeout(() => {
+    playSound(294, 0.18, "sawtooth", 0.2);
+  }, 170);
+
+  setTimeout(() => {
+    playSound(196, 0.25, "sawtooth", 0.25);
+  }, 340);
+}
+
 document.addEventListener("keydown", (event) => {
   if (!gameRunning) return;
 
@@ -127,7 +151,7 @@ function updateGame() {
     resetItem();
 
     if (miss >= 5) {
-      endGame("패배! 사과를 5개 놓쳤습니다.");
+      endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
     }
   }
 }
@@ -153,7 +177,7 @@ function checkCatch() {
     resetItem();
 
     if (score >= 20) {
-      endGame("승리! 사과 20개를 받았습니다!");
+      endGame("승리! 사과 20개를 받았습니다!", "win");
     }
   }
 }
@@ -166,9 +190,17 @@ function resetItem() {
   fallingItem.style.top = itemY + "px";
 }
 
-function endGame(text) {
+function endGame(text, result) {
   gameRunning = false;
   clearInterval(gameLoop);
+
+  if (result === "win") {
+    playWinSound();
+  }
+
+  if (result === "lose") {
+    playLoseSound();
+  }
 
   message.innerHTML = `
     <p>${text}</p>
