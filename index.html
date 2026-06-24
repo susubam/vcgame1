@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>낙하물 받기 게임</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="game-wrap">
+    <h1>낙하물 받기 게임</h1>
+
+    <div class="info">
+      <span>점수: <strong id="score">0</strong></span>
+      <span>놓친 개수: <strong id="miss">0</strong> / 5</span>
+      <span>목표: 20개</span>
+    </div>
+
+    <div id="gameArea">
+      <div id="fallingItem">🍎</div>
+      <div id="player"></div>
+
+      <div id="message">
+        <p>← → 방향키로 이동</p>
+        <button id="startBtn">게임 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #111;
+  color: white;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.game-wrap {
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 10px;
+}
+
+.info {
+  width: 500px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+#gameArea {
+  position: relative;
+  width: 500px;
+  height: 600px;
+  background: linear-gradient(#7ec8ff, #dff6ff);
+  border: 4px solid white;
+  overflow: hidden;
+}
+
+#player {
+  position: absolute;
+  bottom: 20px;
+  left: 210px;
+  width: 80px;
+  height: 25px;
+  background: #ff5c5c;
+  border-radius: 12px;
+}
+
+#fallingItem {
+  position: absolute;
+  top: -50px;
+  left: 200px;
+  font-size: 36px;
+}
+
+#message {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 24px;
+}
+
+#startBtn {
+  padding: 12px 24px;
+  font-size: 20px;
+  border: none;
+  border-radius: 8px;
+  background: #ffcc00;
+  cursor: pointer;
+}
+
+#startBtn:hover {
+  background: #ffe066;
+}
