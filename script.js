@@ -14,6 +14,7 @@ let playerWidth = 100;
 
 let itemX = 200;
 let itemY = -50;
+let itemType = "good";
 
 let level = 1;
 let score = 0;
@@ -32,18 +33,9 @@ const targetScorePerLevel = 20;
 const maxMiss = 5;
 
 const levelSettings = {
-  1: {
-    itemSpeed: 5,
-    playerWidth: 100
-  },
-  2: {
-    itemSpeed: 7,
-    playerWidth: 80
-  },
-  3: {
-    itemSpeed: 9,
-    playerWidth: 60
-  }
+  1: { itemSpeed: 5, playerWidth: 100, badItemChance: 0.2 },
+  2: { itemSpeed: 7, playerWidth: 80, badItemChance: 0.3 },
+  3: { itemSpeed: 9, playerWidth: 60, badItemChance: 0.4 }
 };
 
 let audioContext;
@@ -87,6 +79,18 @@ function playCatchSound() {
 
 function playMoveSound() {
   playSound(220, 0.04, "square", 0.04);
+}
+
+function playMissSound() {
+  playSound(180, 0.12, "sawtooth", 0.18);
+
+  setTimeout(() => {
+    playSound(130, 0.12, "sawtooth", 0.16);
+  }, 100);
+}
+
+function playBadCatchSound() {
+  playSound(90, 0.18, "square", 0.25);
 }
 
 function playWinSound() {
@@ -194,13 +198,18 @@ function updateGame() {
   checkCatch();
 
   if (itemY > 600) {
-    miss++;
-    missText.textContent = miss;
-    resetItem();
+    if (itemType === "good") {
+      miss++;
+      missText.textContent = miss;
+      playMissSound();
 
-    if (miss >= maxMiss) {
-      endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
+      if (miss >= maxMiss) {
+        endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
+        return;
+      }
     }
+
+    resetItem();
   }
 }
 
@@ -250,26 +259,57 @@ function checkCatch() {
     itemRight >= playerLeft &&
     itemLeft <= playerRight
   ) {
-    score++;
-    levelScore++;
+    if (itemType === "good") {
+      score++;
+      levelScore++;
 
-    scoreText.textContent = score;
-    levelScoreText.textContent = levelScore;
+      scoreText.textContent = score;
+      levelScoreText.textContent = levelScore;
 
-    playCatchSound();
-    resetItem();
+      playCatchSound();
+      resetItem();
 
-    if (levelScore >= targetScorePerLevel) {
-      clearInterval(gameLoop);
-      gameRunning = false;
+      if (levelScore >= targetScorePerLevel) {
+        clearInterval(gameLoop);
+        gameRunning = false;
 
-      if (level < 3) {
-        showLevelClear();
-      } else {
-        endGame("최종 승리! 3단계를 모두 클리어했습니다!", "win");
+        if (level < 3) {
+          showLevelClear();
+        } else {
+          endGame("최종 승리! 3단계를 모두 클리어했습니다!", "win");
+        }
+      }
+    } else {
+      miss++;
+      missText.textContent = miss;
+
+      playBadCatchSound();
+      resetItem();
+
+      if (miss >= maxMiss) {
+        endGame("패배! 폭탄을 너무 많이 받았습니다.", "lose");
       }
     }
   }
+}
+
+function resetItem() {
+  itemY = -50;
+  itemX = Math.floor(Math.random() * 460);
+
+  const randomValue = Math.random();
+  const badItemChance = levelSettings[level].badItemChance;
+
+  if (randomValue < badItemChance) {
+    itemType = "bad";
+    fallingItem.textContent = "💣";
+  } else {
+    itemType = "good";
+    fallingItem.textContent = "🍎";
+  }
+
+  fallingItem.style.left = itemX + "px";
+  fallingItem.style.top = itemY + "px";
 }
 
 function showLevelClear() {
@@ -277,7 +317,7 @@ function showLevelClear() {
 
   message.innerHTML = `
     <p>${level}단계 클리어!</p>
-    <p>다음 단계는 더 빨라지고 막대가 작아집니다.</p>
+    <p>다음 단계는 더 빨라지고 폭탄도 더 자주 나옵니다.</p>
     <button id="nextLevelBtn">다음 단계 시작</button>
   `;
 
@@ -305,14 +345,6 @@ function nextLevel() {
 
   clearInterval(gameLoop);
   gameLoop = setInterval(updateGame, 20);
-}
-
-function resetItem() {
-  itemY = -50;
-  itemX = Math.floor(Math.random() * 460);
-
-  fallingItem.style.left = itemX + "px";
-  fallingItem.style.top = itemY + "px";
 }
 
 function endGame(text, result) {
@@ -371,11 +403,8 @@ function saveRanking() {
   ranking.sort((a, b) => {
     if (a.result === "win" && b.result !== "win") return -1;
     if (a.result !== "win" && b.result === "win") return 1;
-
     if (b.level !== a.level) return b.level - a.level;
-
     if (b.score !== a.score) return b.score - a.score;
-
     return a.miss - b.miss;
   });
 
