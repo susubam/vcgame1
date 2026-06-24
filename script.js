@@ -1,5 +1,5 @@
+const gameArea = document.getElementById("gameArea");
 const player = document.getElementById("player");
-const fallingItem = document.getElementById("fallingItem");
 const levelText = document.getElementById("level");
 const scoreText = document.getElementById("score");
 const levelScoreText = document.getElementById("levelScore");
@@ -12,9 +12,7 @@ const resetRankingBtn = document.getElementById("resetRankingBtn");
 let playerX = 200;
 let playerWidth = 100;
 
-let itemX = 200;
-let itemY = -50;
-let itemType = "good";
+let fallingItems = [];
 
 let level = 1;
 let score = 0;
@@ -24,6 +22,7 @@ let finalResult = "";
 
 let gameRunning = false;
 let gameLoop;
+let spawnLoop;
 
 let moveLeft = false;
 let moveRight = false;
@@ -33,9 +32,30 @@ const targetScorePerLevel = 20;
 const maxMiss = 5;
 
 const levelSettings = {
-  1: { itemSpeed: 5, playerWidth: 100, badItemChance: 0.2 },
-  2: { itemSpeed: 7, playerWidth: 80, badItemChance: 0.3 },
-  3: { itemSpeed: 9, playerWidth: 60, badItemChance: 0.4 }
+  1: {
+    itemSpeed: 5,
+    playerWidth: 100,
+    badItemChance: 0.2,
+    maxItems: 3,
+    spawnDelay: 900,
+    startItems: 2
+  },
+  2: {
+    itemSpeed: 7,
+    playerWidth: 80,
+    badItemChance: 0.3,
+    maxItems: 3,
+    spawnDelay: 550,
+    startItems: 3
+  },
+  3: {
+    itemSpeed: 9,
+    playerWidth: 60,
+    badItemChance: 0.4,
+    maxItems: 5,
+    spawnDelay: 380,
+    startItems: 4
+  }
 };
 
 let audioContext;
@@ -164,6 +184,10 @@ function startGame() {
   moveLeft = false;
   moveRight = false;
 
+  clearInterval(gameLoop);
+  clearInterval(spawnLoop);
+
+  removeAllItems();
   applyLevelSettings();
 
   scoreText.textContent = score;
@@ -173,11 +197,11 @@ function startGame() {
 
   message.style.display = "none";
 
-  resetItem();
-
   gameRunning = true;
 
-  clearInterval(gameLoop);
+  createStartItems();
+  startSpawnLoop();
+
   gameLoop = setInterval(updateGame, 20);
 }
 
@@ -189,27 +213,77 @@ function applyLevelSettings() {
   player.style.left = playerX + "px";
 }
 
+function createStartItems() {
+  for (let i = 0; i < levelSettings[level].startItems; i++) {
+    createFallingItem(-50 - i * 120);
+  }
+}
+
+function startSpawnLoop() {
+  clearInterval(spawnLoop);
+
+  spawnLoop = setInterval(() => {
+    if (!gameRunning) return;
+
+    if (fallingItems.length < levelSettings[level].maxItems) {
+      createFallingItem();
+    }
+  }, levelSettings[level].spawnDelay);
+}
+
+function createFallingItem(startY = -50) {
+  const itemElement = document.createElement("div");
+  itemElement.classList.add("falling-item");
+
+  const badItemChance = levelSettings[level].badItemChance;
+  const itemType = Math.random() < badItemChance ? "bad" : "good";
+
+  itemElement.textContent = itemType === "good" ? "🍎" : "💣";
+
+  const itemX = Math.floor(Math.random() * 460);
+  const itemY = startY;
+
+  itemElement.style.left = itemX + "px";
+  itemElement.style.top = itemY + "px";
+
+  gameArea.appendChild(itemElement);
+
+  fallingItems.push({
+    element: itemElement,
+    x: itemX,
+    y: itemY,
+    type: itemType
+  });
+}
+
 function updateGame() {
   movePlayer();
 
-  itemY += levelSettings[level].itemSpeed;
-  fallingItem.style.top = itemY + "px";
+  for (let i = fallingItems.length - 1; i >= 0; i--) {
+    const item = fallingItems[i];
 
-  checkCatch();
+    item.y += levelSettings[level].itemSpeed;
+    item.element.style.top = item.y + "px";
 
-  if (itemY > 600) {
-    if (itemType === "good") {
-      miss++;
-      missText.textContent = miss;
-      playMissSound();
-
-      if (miss >= maxMiss) {
-        endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
-        return;
-      }
+    if (checkCatch(item)) {
+      removeItem(i);
+      continue;
     }
 
-    resetItem();
+    if (item.y > 600) {
+      if (item.type === "good") {
+        miss++;
+        missText.textContent = miss;
+        playMissSound();
+
+        if (miss >= maxMiss) {
+          endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
+          return;
+        }
+      }
+
+      removeItem(i);
+    }
   }
 }
 
@@ -245,71 +319,76 @@ function movePlayer() {
   }
 }
 
-function checkCatch() {
-  const itemLeft = itemX;
-  const itemRight = itemX + 36;
-  const itemBottom = itemY + 36;
+function checkCatch(item) {
+  const itemLeft = item.x;
+  const itemRight = item.x + 36;
+  const itemBottom = item.y + 36;
 
   const playerLeft = playerX;
   const playerRight = playerX + playerWidth;
   const playerTop = 555;
 
-  if (
+  const isHit =
     itemBottom >= playerTop &&
     itemRight >= playerLeft &&
-    itemLeft <= playerRight
-  ) {
-    if (itemType === "good") {
-      score++;
-      levelScore++;
+    itemLeft <= playerRight;
 
-      scoreText.textContent = score;
-      levelScoreText.textContent = levelScore;
+  if (!isHit) {
+    return false;
+  }
 
-      playCatchSound();
-      resetItem();
+  if (item.type === "good") {
+    score++;
+    levelScore++;
 
-      if (levelScore >= targetScorePerLevel) {
-        clearInterval(gameLoop);
-        gameRunning = false;
+    scoreText.textContent = score;
+    levelScoreText.textContent = levelScore;
 
-        if (level < 3) {
-          showLevelClear();
-        } else {
-          endGame("최종 승리! 3단계를 모두 클리어했습니다!", "win");
-        }
-      }
-    } else {
-      miss++;
-      missText.textContent = miss;
+    playCatchSound();
 
-      playBadCatchSound();
-      resetItem();
+    if (levelScore >= targetScorePerLevel) {
+      clearInterval(gameLoop);
+      clearInterval(spawnLoop);
+      gameRunning = false;
 
-      if (miss >= maxMiss) {
-        endGame("패배! 폭탄을 너무 많이 받았습니다.", "lose");
+      removeAllItems();
+
+      if (level < 3) {
+        showLevelClear();
+      } else {
+        endGame("최종 승리! 3단계를 모두 클리어했습니다!", "win");
       }
     }
+  } else {
+    miss++;
+    missText.textContent = miss;
+
+    playBadCatchSound();
+
+    if (miss >= maxMiss) {
+      endGame("패배! 폭탄을 너무 많이 받았습니다.", "lose");
+    }
   }
+
+  return true;
 }
 
-function resetItem() {
-  itemY = -50;
-  itemX = Math.floor(Math.random() * 460);
+function removeItem(index) {
+  const item = fallingItems[index];
 
-  const randomValue = Math.random();
-  const badItemChance = levelSettings[level].badItemChance;
-
-  if (randomValue < badItemChance) {
-    itemType = "bad";
-    fallingItem.textContent = "💣";
-  } else {
-    itemType = "good";
-    fallingItem.textContent = "🍎";
+  if (item && item.element) {
+    item.element.remove();
   }
 
-  fallingItem.style.left = itemX + "px";
-  fallingItem.style.top = itemY + "px";
+  fallingItems.splice(index, 1);
+}
+
+function removeAllItems() {
+  fallingItems.forEach((item) => {
+    item.element.remove();
+  });
+
+  fallingItems = [];
 }
 
 function showLevelClear() {
@@ -317,7 +396,7 @@ function showLevelClear() {
 
   message.innerHTML = `
     <p>${level}단계 클리어!</p>
-    <p>다음 단계는 더 빨라지고 폭탄도 더 자주 나옵니다.</p>
+    <p>다음 단계는 더 많은 낙하물이 더 빠르게 떨어집니다.</p>
     <button id="nextLevelBtn">다음 단계 시작</button>
   `;
 
@@ -333,23 +412,30 @@ function nextLevel() {
   moveLeft = false;
   moveRight = false;
 
+  clearInterval(gameLoop);
+  clearInterval(spawnLoop);
+
+  removeAllItems();
+  applyLevelSettings();
+
   levelText.textContent = level;
   levelScoreText.textContent = levelScore;
-
-  applyLevelSettings();
-  resetItem();
 
   message.style.display = "none";
 
   gameRunning = true;
 
-  clearInterval(gameLoop);
+  createStartItems();
+  startSpawnLoop();
+
   gameLoop = setInterval(updateGame, 20);
 }
 
 function endGame(text, result) {
   gameRunning = false;
+
   clearInterval(gameLoop);
+  clearInterval(spawnLoop);
 
   moveLeft = false;
   moveRight = false;

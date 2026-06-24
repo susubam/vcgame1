@@ -57,10 +57,9 @@ h1 {
   transition: width 0.2s;
 }
 
-#fallingItem {
+.falling-item {
   position: absolute;
   top: -50px;
-  left: 200px;
   font-size: 36px;
 }
 
@@ -75,6 +74,7 @@ h1 {
   color: white;
   font-size: 24px;
   padding: 20px;
+  z-index: 10;
 }
 
 #startBtn,
