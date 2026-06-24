@@ -24,8 +24,9 @@ h1 {
 
 .info {
   width: 500px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
   margin-bottom: 10px;
   font-size: 18px;
 }
@@ -42,11 +43,12 @@ h1 {
 #player {
   position: absolute;
   bottom: 20px;
-  left: 210px;
-  width: 80px;
+  left: 200px;
+  width: 100px;
   height: 25px;
   background: #ff5c5c;
   border-radius: 12px;
+  transition: width 0.2s;
 }
 
 #fallingItem {
@@ -71,6 +73,7 @@ h1 {
 
 #startBtn,
 #restartBtn,
+#nextLevelBtn,
 #saveRankBtn,
 #resetRankingBtn {
   padding: 12px 24px;
@@ -84,6 +87,7 @@ h1 {
 
 #startBtn:hover,
 #restartBtn:hover,
+#nextLevelBtn:hover,
 #saveRankBtn:hover,
 #resetRankingBtn:hover {
   background: #ffe066;

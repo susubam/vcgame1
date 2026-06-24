@@ -1,17 +1,23 @@
 const player = document.getElementById("player");
 const fallingItem = document.getElementById("fallingItem");
+const levelText = document.getElementById("level");
 const scoreText = document.getElementById("score");
+const levelScoreText = document.getElementById("levelScore");
 const missText = document.getElementById("miss");
 const message = document.getElementById("message");
 const startBtn = document.getElementById("startBtn");
 const rankingList = document.getElementById("rankingList");
 const resetRankingBtn = document.getElementById("resetRankingBtn");
 
-let playerX = 210;
+let playerX = 200;
+let playerWidth = 100;
+
 let itemX = 200;
 let itemY = -50;
 
+let level = 1;
 let score = 0;
+let levelScore = 0;
 let miss = 0;
 let finalResult = "";
 
@@ -19,7 +25,23 @@ let gameRunning = false;
 let gameLoop;
 
 const playerSpeed = 25;
-const itemSpeed = 5;
+const targetScorePerLevel = 20;
+const maxMiss = 5;
+
+const levelSettings = {
+  1: {
+    itemSpeed: 5,
+    playerWidth: 100
+  },
+  2: {
+    itemSpeed: 7,
+    playerWidth: 80
+  },
+  3: {
+    itemSpeed: 9,
+    playerWidth: 60
+  }
+};
 
 let audioContext;
 
@@ -88,6 +110,14 @@ function playLoseSound() {
   }, 340);
 }
 
+function playLevelUpSound() {
+  playSound(500, 0.08, "triangle", 0.2);
+
+  setTimeout(() => {
+    playSound(750, 0.1, "triangle", 0.25);
+  }, 90);
+}
+
 document.addEventListener("keydown", (event) => {
   if (!gameRunning) return;
 
@@ -107,8 +137,8 @@ document.addEventListener("keydown", (event) => {
     playerX = 0;
   }
 
-  if (playerX > 420) {
-    playerX = 420;
+  if (playerX > 500 - playerWidth) {
+    playerX = 500 - playerWidth;
   }
 
   if (moved) {
@@ -127,15 +157,19 @@ resetRankingBtn.addEventListener("click", () => {
 function startGame() {
   initAudio();
 
+  level = 1;
   score = 0;
+  levelScore = 0;
   miss = 0;
-  playerX = 210;
   finalResult = "";
 
-  scoreText.textContent = score;
-  missText.textContent = miss;
+  applyLevelSettings();
 
-  player.style.left = playerX + "px";
+  scoreText.textContent = score;
+  levelScoreText.textContent = levelScore;
+  missText.textContent = miss;
+  levelText.textContent = level;
+
   message.style.display = "none";
 
   resetItem();
@@ -146,8 +180,16 @@ function startGame() {
   gameLoop = setInterval(updateGame, 20);
 }
 
+function applyLevelSettings() {
+  playerWidth = levelSettings[level].playerWidth;
+  playerX = (500 - playerWidth) / 2;
+
+  player.style.width = playerWidth + "px";
+  player.style.left = playerX + "px";
+}
+
 function updateGame() {
-  itemY += itemSpeed;
+  itemY += levelSettings[level].itemSpeed;
   fallingItem.style.top = itemY + "px";
 
   checkCatch();
@@ -157,7 +199,7 @@ function updateGame() {
     missText.textContent = miss;
     resetItem();
 
-    if (miss >= 5) {
+    if (miss >= maxMiss) {
       endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
     }
   }
@@ -169,7 +211,7 @@ function checkCatch() {
   const itemBottom = itemY + 36;
 
   const playerLeft = playerX;
-  const playerRight = playerX + 80;
+  const playerRight = playerX + playerWidth;
   const playerTop = 555;
 
   if (
@@ -178,15 +220,57 @@ function checkCatch() {
     itemLeft <= playerRight
   ) {
     score++;
+    levelScore++;
+
     scoreText.textContent = score;
+    levelScoreText.textContent = levelScore;
 
     playCatchSound();
     resetItem();
 
-    if (score >= 20) {
-      endGame("승리! 사과 20개를 받았습니다!", "win");
+    if (levelScore >= targetScorePerLevel) {
+      clearInterval(gameLoop);
+      gameRunning = false;
+
+      if (level < 3) {
+        showLevelClear();
+      } else {
+        endGame("최종 승리! 3단계를 모두 클리어했습니다!", "win");
+      }
     }
   }
+}
+
+function showLevelClear() {
+  playLevelUpSound();
+
+  message.innerHTML = `
+    <p>${level}단계 클리어!</p>
+    <p>다음 단계는 더 빨라지고 막대가 작아집니다.</p>
+    <button id="nextLevelBtn">다음 단계 시작</button>
+  `;
+
+  message.style.display = "flex";
+
+  document.getElementById("nextLevelBtn").addEventListener("click", nextLevel);
+}
+
+function nextLevel() {
+  level++;
+  levelScore = 0;
+
+  levelText.textContent = level;
+  levelScoreText.textContent = levelScore;
+
+  applyLevelSettings();
+  resetItem();
+
+  message.style.display = "none";
+
+  gameRunning = true;
+
+  clearInterval(gameLoop);
+  gameLoop = setInterval(updateGame, 20);
 }
 
 function resetItem() {
@@ -237,6 +321,7 @@ function saveRanking() {
   const newRecord = {
     nickname: nickname,
     score: score,
+    level: level,
     miss: miss,
     result: finalResult,
     date: new Date().toLocaleString()
@@ -249,6 +334,8 @@ function saveRanking() {
   ranking.sort((a, b) => {
     if (a.result === "win" && b.result !== "win") return -1;
     if (a.result !== "win" && b.result === "win") return 1;
+
+    if (b.level !== a.level) return b.level - a.level;
 
     if (b.score !== a.score) return b.score - a.score;
 
@@ -288,7 +375,7 @@ function renderRanking() {
     li.innerHTML = `
       <strong>${record.nickname}</strong>
       <span class="${resultClass}">[${resultText}]</span>
-      점수 ${record.score}점 / 놓침 ${record.miss}개
+      ${record.level}단계 / 점수 ${record.score}점 / 놓침 ${record.miss}개
       <br />
       <small>${record.date}</small>
     `;
