@@ -9,6 +9,8 @@ const startBtn = document.getElementById("startBtn");
 const rankingList = document.getElementById("rankingList");
 const resetRankingBtn = document.getElementById("resetRankingBtn");
 const bgm = document.getElementById("bgm");
+const touchLeftBtn = document.getElementById("touchLeftBtn");
+const touchRightBtn = document.getElementById("touchRightBtn");
 
 let playerX = 200;
 let playerWidth = 100;
@@ -27,8 +29,13 @@ let spawnLoop;
 
 let moveLeft = false;
 let moveRight = false;
+let keyboardMoveLeft = false;
+let keyboardMoveRight = false;
+let touchMoveLeft = false;
+let touchMoveRight = false;
 
 const playerSpeed = 9;
+const itemSize = 36;
 const targetScorePerLevel = 20;
 const maxMiss = 5;
 
@@ -166,23 +173,119 @@ function playLevelUpSound() {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft") {
-    moveLeft = true;
+    keyboardMoveLeft = true;
+    syncMoveFlags();
   }
 
   if (event.key === "ArrowRight") {
-    moveRight = true;
+    keyboardMoveRight = true;
+    syncMoveFlags();
   }
 });
 
 document.addEventListener("keyup", (event) => {
   if (event.key === "ArrowLeft") {
-    moveLeft = false;
+    keyboardMoveLeft = false;
+    syncMoveFlags();
   }
 
   if (event.key === "ArrowRight") {
-    moveRight = false;
+    keyboardMoveRight = false;
+    syncMoveFlags();
   }
 });
+
+function syncMoveFlags() {
+  moveLeft = keyboardMoveLeft || touchMoveLeft;
+  moveRight = keyboardMoveRight || touchMoveRight;
+}
+
+function getGameWidth() {
+  return gameArea.clientWidth;
+}
+
+function getGameHeight() {
+  return gameArea.clientHeight;
+}
+
+function setTouchDirection(direction) {
+  touchMoveLeft = direction === "left";
+  touchMoveRight = direction === "right";
+  syncMoveFlags();
+  touchLeftBtn.classList.toggle("is-pressed", touchMoveLeft);
+  touchRightBtn.classList.toggle("is-pressed", touchMoveRight);
+}
+
+function clearTouchDirection() {
+  touchMoveLeft = false;
+  touchMoveRight = false;
+  syncMoveFlags();
+  touchLeftBtn.classList.remove("is-pressed");
+  touchRightBtn.classList.remove("is-pressed");
+}
+
+function resetInputState() {
+  keyboardMoveLeft = false;
+  keyboardMoveRight = false;
+  touchMoveLeft = false;
+  touchMoveRight = false;
+  syncMoveFlags();
+  touchLeftBtn.classList.remove("is-pressed");
+  touchRightBtn.classList.remove("is-pressed");
+}
+
+function bindHoldButton(button, direction) {
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    button.setPointerCapture(event.pointerId);
+    setTouchDirection(direction);
+  });
+
+  button.addEventListener("pointerup", clearTouchDirection);
+  button.addEventListener("pointercancel", clearTouchDirection);
+  button.addEventListener("lostpointercapture", clearTouchDirection);
+}
+
+function setDirectionFromGameTouch(event) {
+  if (event.target.closest("button, input")) return;
+
+  const rect = gameArea.getBoundingClientRect();
+  const direction = event.clientX < rect.left + rect.width / 2 ? "left" : "right";
+
+  setTouchDirection(direction);
+}
+
+bindHoldButton(touchLeftBtn, "left");
+bindHoldButton(touchRightBtn, "right");
+
+gameArea.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("button, input")) return;
+
+  event.preventDefault();
+  gameArea.setPointerCapture(event.pointerId);
+  setDirectionFromGameTouch(event);
+});
+
+gameArea.addEventListener("pointermove", (event) => {
+  if (event.buttons === 1) {
+    setDirectionFromGameTouch(event);
+  }
+});
+
+gameArea.addEventListener("pointerup", clearTouchDirection);
+gameArea.addEventListener("pointercancel", clearTouchDirection);
+gameArea.addEventListener("lostpointercapture", clearTouchDirection);
+
+window.addEventListener("resize", () => {
+  const maxX = getGameWidth() - playerWidth;
+
+  if (playerX > maxX) {
+    playerX = Math.max(0, maxX);
+    player.style.left = playerX + "px";
+  }
+});
+
+window.addEventListener("blur", resetInputState);
 
 startBtn.addEventListener("click", startGame);
 
@@ -201,8 +304,7 @@ function startGame() {
   miss = 0;
   finalResult = "";
 
-  moveLeft = false;
-  moveRight = false;
+  resetInputState();
 
   clearInterval(gameLoop);
   clearInterval(spawnLoop);
@@ -227,7 +329,7 @@ function startGame() {
 
 function applyLevelSettings() {
   playerWidth = levelSettings[level].playerWidth;
-  playerX = (500 - playerWidth) / 2;
+  playerX = (getGameWidth() - playerWidth) / 2;
 
   player.style.width = playerWidth + "px";
   player.style.left = playerX + "px";
@@ -260,7 +362,7 @@ function createFallingItem(startY = -50) {
 
   itemElement.textContent = itemType === "good" ? "🍎" : "💣";
 
-  const itemX = Math.floor(Math.random() * 460);
+  const itemX = Math.floor(Math.random() * Math.max(1, getGameWidth() - itemSize));
   const itemY = startY;
 
   itemElement.style.left = itemX + "px";
@@ -290,7 +392,7 @@ function updateGame() {
       continue;
     }
 
-    if (item.y > 600) {
+    if (item.y > getGameHeight()) {
       if (item.type === "good") {
         miss++;
         missText.textContent = miss;
@@ -326,8 +428,8 @@ function movePlayer() {
     playerX = 0;
   }
 
-  if (playerX > 500 - playerWidth) {
-    playerX = 500 - playerWidth;
+  if (playerX > getGameWidth() - playerWidth) {
+    playerX = getGameWidth() - playerWidth;
   }
 
   if (moved) {
@@ -341,12 +443,12 @@ function movePlayer() {
 
 function checkCatch(item) {
   const itemLeft = item.x;
-  const itemRight = item.x + 36;
-  const itemBottom = item.y + 36;
+  const itemRight = item.x + itemSize;
+  const itemBottom = item.y + itemSize;
 
   const playerLeft = playerX;
   const playerRight = playerX + playerWidth;
-  const playerTop = 555;
+  const playerTop = getGameHeight() - 45;
 
   const isHit =
     itemBottom >= playerTop &&
@@ -429,8 +531,7 @@ function nextLevel() {
   level++;
   levelScore = 0;
 
-  moveLeft = false;
-  moveRight = false;
+  resetInputState();
 
   clearInterval(gameLoop);
   clearInterval(spawnLoop);
@@ -459,8 +560,7 @@ function endGame(text, result) {
 
   stopBgm();
 
-  moveLeft = false;
-  moveRight = false;
+  resetInputState();
 
   finalResult = result;
 
