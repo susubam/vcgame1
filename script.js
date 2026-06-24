@@ -19,15 +19,63 @@ let gameLoop;
 const playerSpeed = 25;
 const itemSpeed = 5;
 
+let audioContext;
+
+function initAudio() {
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+}
+
+function playSound(frequency, duration, type = "sine", volume = 0.2) {
+  if (!audioContext) return;
+
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+
+  gainNode.gain.value = volume;
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+
+  oscillator.start();
+
+  gainNode.gain.exponentialRampToValueAtTime(
+    0.001,
+    audioContext.currentTime + duration
+  );
+
+  oscillator.stop(audioContext.currentTime + duration);
+}
+
+function playCatchSound() {
+  playSound(700, 0.08, "sine", 0.25);
+
+  setTimeout(() => {
+    playSound(950, 0.08, "sine", 0.2);
+  }, 70);
+}
+
+function playMoveSound() {
+  playSound(220, 0.04, "square", 0.05);
+}
+
 document.addEventListener("keydown", (event) => {
   if (!gameRunning) return;
 
+  let moved = false;
+
   if (event.key === "ArrowLeft") {
     playerX -= playerSpeed;
+    moved = true;
   }
 
   if (event.key === "ArrowRight") {
     playerX += playerSpeed;
+    moved = true;
   }
 
   if (playerX < 0) {
@@ -38,12 +86,17 @@ document.addEventListener("keydown", (event) => {
     playerX = 420;
   }
 
-  player.style.left = playerX + "px";
+  if (moved) {
+    player.style.left = playerX + "px";
+    playMoveSound();
+  }
 });
 
 startBtn.addEventListener("click", startGame);
 
 function startGame() {
+  initAudio();
+
   score = 0;
   miss = 0;
   playerX = 210;
@@ -95,6 +148,8 @@ function checkCatch() {
   ) {
     score++;
     scoreText.textContent = score;
+
+    playCatchSound();
     resetItem();
 
     if (score >= 20) {
@@ -106,6 +161,7 @@ function checkCatch() {
 function resetItem() {
   itemY = -50;
   itemX = Math.floor(Math.random() * 460);
+
   fallingItem.style.left = itemX + "px";
   fallingItem.style.top = itemY + "px";
 }
