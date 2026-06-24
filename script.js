@@ -24,7 +24,10 @@ let finalResult = "";
 let gameRunning = false;
 let gameLoop;
 
-const playerSpeed = 25;
+let moveLeft = false;
+let moveRight = false;
+
+const playerSpeed = 9;
 const targetScorePerLevel = 20;
 const maxMiss = 5;
 
@@ -83,7 +86,7 @@ function playCatchSound() {
 }
 
 function playMoveSound() {
-  playSound(220, 0.04, "square", 0.05);
+  playSound(220, 0.04, "square", 0.04);
 }
 
 function playWinSound() {
@@ -119,31 +122,22 @@ function playLevelUpSound() {
 }
 
 document.addEventListener("keydown", (event) => {
-  if (!gameRunning) return;
-
-  let moved = false;
-
   if (event.key === "ArrowLeft") {
-    playerX -= playerSpeed;
-    moved = true;
+    moveLeft = true;
   }
 
   if (event.key === "ArrowRight") {
-    playerX += playerSpeed;
-    moved = true;
+    moveRight = true;
+  }
+});
+
+document.addEventListener("keyup", (event) => {
+  if (event.key === "ArrowLeft") {
+    moveLeft = false;
   }
 
-  if (playerX < 0) {
-    playerX = 0;
-  }
-
-  if (playerX > 500 - playerWidth) {
-    playerX = 500 - playerWidth;
-  }
-
-  if (moved) {
-    player.style.left = playerX + "px";
-    playMoveSound();
+  if (event.key === "ArrowRight") {
+    moveRight = false;
   }
 });
 
@@ -162,6 +156,9 @@ function startGame() {
   levelScore = 0;
   miss = 0;
   finalResult = "";
+
+  moveLeft = false;
+  moveRight = false;
 
   applyLevelSettings();
 
@@ -189,6 +186,8 @@ function applyLevelSettings() {
 }
 
 function updateGame() {
+  movePlayer();
+
   itemY += levelSettings[level].itemSpeed;
   fallingItem.style.top = itemY + "px";
 
@@ -201,6 +200,38 @@ function updateGame() {
 
     if (miss >= maxMiss) {
       endGame("패배! 사과를 5개 놓쳤습니다.", "lose");
+    }
+  }
+}
+
+function movePlayer() {
+  if (!gameRunning) return;
+
+  let moved = false;
+
+  if (moveLeft) {
+    playerX -= playerSpeed;
+    moved = true;
+  }
+
+  if (moveRight) {
+    playerX += playerSpeed;
+    moved = true;
+  }
+
+  if (playerX < 0) {
+    playerX = 0;
+  }
+
+  if (playerX > 500 - playerWidth) {
+    playerX = 500 - playerWidth;
+  }
+
+  if (moved) {
+    player.style.left = playerX + "px";
+
+    if (Math.random() < 0.15) {
+      playMoveSound();
     }
   }
 }
@@ -259,6 +290,9 @@ function nextLevel() {
   level++;
   levelScore = 0;
 
+  moveLeft = false;
+  moveRight = false;
+
   levelText.textContent = level;
   levelScoreText.textContent = levelScore;
 
@@ -284,6 +318,9 @@ function resetItem() {
 function endGame(text, result) {
   gameRunning = false;
   clearInterval(gameLoop);
+
+  moveLeft = false;
+  moveRight = false;
 
   finalResult = result;
 
